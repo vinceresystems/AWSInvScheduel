@@ -1,0 +1,282 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Production Schedule</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <script>
+        let numberOfPrinters = 1;  // Initialize with 1 printer
+        function toggleSelectAll(checked) {
+        const checkboxes = document.querySelectorAll('input[type="checkbox"]');
+        checkboxes.forEach(checkbox => {
+            checkbox.checked = checked;
+        });
+        autoSubmit();
+}
+
+        // Function to submit form asynchronously and update the page without reload
+        function autoSubmit() {
+            const form = document.getElementById("scheduleForm");
+            const formData = new FormData(form);
+
+            fetch(form.action, {
+                method: form.method,
+                body: formData,
+            })
+            .then(response => response.json())
+            .then(data => {
+                console.log("Response data:", data);
+
+                // Update the page based on the server response
+                data.schedule.forEach((day) => {
+                    document.querySelector(`input[name="print1_done_${day['day']}"]`).checked = day['print1_done'] === 1;
+                    document.querySelector(`input[name="print2_done_${day['day']}"]`).checked = day['print2_done'] === 1;
+                    document.querySelector(`input[name="print3_done_${day['day']}"]`).checked = day['print3_done'] === 1;
+                });
+
+                // Update the totals dynamically
+                updateTotals(data.totals);
+            })
+            .catch(error => {
+                console.error("Error submitting form:", error);
+            });
+        }
+
+        // Function to update totals dynamically, considering the number of printers
+        function updateTotals(totals) {
+            document.getElementById("total-rails").innerText = totals[0] * numberOfPrinters;
+            document.getElementById("total-iphones").innerText = totals[1] * numberOfPrinters;
+            document.getElementById("total-logos").innerText = totals[2] * numberOfPrinters;
+            document.getElementById("total-knobs").innerText = totals[3] * numberOfPrinters;
+            document.getElementById("total-ipadbase").innerText = totals[4] * numberOfPrinters;
+            document.getElementById("total-snapfits").innerText = totals[5] * numberOfPrinters;
+        }
+
+        // Function to adjust part counts manually
+        function adjustPartCount(partId, increment) {
+            const partElement = document.getElementById(partId);
+            let currentValue = parseInt(partElement.innerText);
+
+            if (!isNaN(currentValue)) {
+                const newValue = currentValue + increment;
+                partElement.innerText = Math.max(newValue, 0);  // Prevent going below 0
+
+                // Send the updated value to the server asynchronously
+                const formData = new FormData();
+                formData.append(partId, partElement.innerText);
+                console.log("form triggered:", error);
+
+                fetch("/adjust_part_count", {
+                    method: "POST",
+                    body: formData,
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (!data.success) {
+                        alert("Failed to update part count.");
+                    }
+                })
+                .catch(error => {
+                    console.error("Error adjusting part count:", error);
+                });
+            }
+        }
+
+        // Function to adjust the number of printers
+        function adjustPrinters(increment) {
+            const printerElement = document.getElementById("printer-count");
+            numberOfPrinters = Math.max(numberOfPrinters + increment, 1);  // Ensure at least 1 printer
+            printerElement.innerText = numberOfPrinters;
+
+            // Update the totals considering the new number of printers
+            const totals = {
+                rails: parseInt(document.getElementById("total-rails").innerText) / (numberOfPrinters - increment),
+                iphones: parseInt(document.getElementById("total-iphones").innerText) / (numberOfPrinters - increment),
+                logos: parseInt(document.getElementById("total-logos").innerText) / (numberOfPrinters - increment),
+                knobs: parseInt(document.getElementById("total-knobs").innerText) / (numberOfPrinters - increment),
+                ipadbase: parseInt(document.getElementById("total-ipadbase").innerText) / (numberOfPrinters - increment),
+                snapfits: parseInt(document.getElementById("total-snapfits").innerText) / (numberOfPrinters - increment),
+            };
+
+            updateTotals(totals);  // Recalculate totals
+        }
+    </script>
+</head>
+<body>
+    <a href="{{ url_for('inventory.inventory') }}">Go to Inventory Page</a>
+    <h1>6-Day Production Schedule</h1>
+
+    <!-- Section to adjust the number of printers -->
+    <div>
+        <h2>Number of Printers: 
+            <button onclick="adjustPrinters(-1)">-</button>
+            <span id="printer-count">1</span>
+            <button onclick="adjustPrinters(1)">+</button>
+        </h2>
+    </div>
+
+    <!-- Automatically submit form asynchronously on checkbox click -->
+    <form method="POST" action="/production/update" id="scheduleForm">
+        <table border="1">
+            <thead>
+                <tr>
+                    <th>Day</th>
+                    <th>Date</th> <!-- New date column -->
+                    <th>12-Hour Print (Print 1)</th>
+                    <th>6-Hour Print 1</th>
+                    <th>6-Hour Print 2</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for day in schedule %}
+                <tr>
+                    <td>Day {{ day[0] }}</td>
+                    <td>{{ day[1] }}</td> <!-- Display the date here -->
+                    <td>
+                        Print 1
+                        <button class="info-btn">i
+                            <span class="tooltip-text">Print 1: 15 Rails, 12 iPhones, 8 Logos, 8 Knobs</span>
+                        </button>
+                        <input type="checkbox" name="print1_done_{{ day[0] }}" {% if day[2] %} checked {% endif %} onchange="autoSubmit(event)">
+                    </td>
+                    <td>
+                        {% if day[0] in [1, 3, 5] %}
+                            Print 3
+                            <button class="info-btn">i
+                                <span class="tooltip-text">
+                                    Print 3: 6 iPhones, 4 Logos, 12 iPadBase
+                                </span>
+                            </button>
+                        {% else %}
+                            Print 5
+                            <button class="info-btn">i
+                                <span class="tooltip-text">
+                                    Print 5: 15 iPadBase
+                                </span>
+                            </button>
+                        {% endif %}
+                        <input type="checkbox" name="print3_done_{{ day[0] }}" {% if day[3] %} checked {% endif %} onchange="autoSubmit(event)">
+                    </td>
+                    <td>
+                        {% if day[0] in [2, 3, 5] %}
+                            Print 2
+                            <button class="info-btn">i
+                                <span class="tooltip-text">
+                                    Print 2: 10 Logos, 8 Knobs
+                                </span>
+                            </button>
+                        {% else %}
+                            Print 4 (Snapfits)
+                            <button class="info-btn">i
+                                <span class="tooltip-text">
+                                    Print 4: 27 Snapfits
+                                </span>
+                            </button>
+                        {% endif %}
+                        <input type="checkbox" name="print2_done_{{ day[0] }}" {% if day[4] %} checked {% endif %} onchange="autoSubmit(event)">
+                    </td>
+                </tr>                
+                {% endfor %}
+            </tbody>
+        </table>
+    </form>
+    <div>
+        <label>
+            <input type="checkbox" onclick="toggleSelectAll(this.checked)">
+            Select/Deselect All
+        </label>
+    </div>
+    
+    <h2>Total Parts Produced (Current Cycle):</h2>
+    <ul>
+        <li>
+            Rails: 
+            <button onclick="adjustPartCount('total-rails', -1)">-</button>
+            <span id="total-rails">{{ totals[0] }}</span>
+            <button onclick="adjustPartCount('total-rails', 1)">+</button>
+        </li>
+        <li>
+            iPhones: 
+            <button onclick="adjustPartCount('total-iphones', -1)">-</button>
+            <span id="total-iphones">{{ totals[1] }}</span>
+            <button onclick="adjustPartCount('total-iphones', 1)">+</button>
+        </li>
+        <li>
+            Logos: 
+            <button onclick="adjustPartCount('total-logos', -1)">-</button>
+            <span id="total-logos">{{ totals[2] }}</span>
+            <button onclick="adjustPartCount('total-logos', 1)">+</button>
+        </li>
+        <li>
+            Knobs: 
+            <button onclick="adjustPartCount('total-knobs', -1)">-</button>
+            <span id="total-knobs">{{ totals[3] }}</span>
+            <button onclick="adjustPartCount('total-knobs', 1)">+</button>
+        </li>
+        <li>
+            iPadBase: 
+            <button onclick="adjustPartCount('total-ipadbase', -1)">-</button>
+            <span id="total-ipadbase">{{ totals[4] }}</span>
+            <button onclick="adjustPartCount('total-ipadbase', 1)">+</button>
+        </li>
+        <li>
+            Snapfits: 
+            <button onclick="adjustPartCount('total-snapfits', -1)">-</button>
+            <span id="total-snapfits">{{ totals[5] }}</span>
+            <button onclick="adjustPartCount('total-snapfits', 1)">+</button>
+        </li>
+    </ul>
+
+    <!-- Display Start and End Date -->
+    <h2>Production Period</h2>
+
+    <!-- Submit to Master Summary Button -->
+    <form method="POST" action="{{ url_for('production.submit_master') }}">
+        <button class="submit-btn" type="submit">Submit to Master Summary</button>
+    </form>
+
+    <!-- Undo Button -->
+    <form method="POST" action="{{ url_for('production.undo_last_submission') }}">
+        <button class="undo-btn" type="submit">Undo Last Submission</button>
+    </form>    
+
+    <!-- Restart Schedule Button -->
+    <form method="POST" action="{{ url_for('production.restart_schedule') }}">
+        <button class="submit-btn" type="submit">Restart Schedule with New Date</button>
+    </form>    
+
+    <h2>Master Summary (Cumulative Across All Cycles):</h2>
+    <table border="1">
+        <thead>
+            <tr>
+                <th>Cycle</th>
+                <th>Start Date</th>
+                <th>End Date</th>
+                <th>Total Rails</th>
+                <th>Total iPhones</th>
+                <th>Total Logos</th>
+                <th>Total Knobs</th>
+                <th>Total iPadBase</th>
+                <th>Total Snapfits</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for cycle in master_summary %}
+            <tr>
+                <td>Cycle {{ cycle[0] }}</td>
+                <td>{{ cycle[1] }}</td>
+                <td>{{ cycle[2] }}</td>
+                <td>{{ cycle[3] }}</td>
+                <td>{{ cycle[4] }}</td>
+                <td>{{ cycle[5] }}</td>
+                <td>{{ cycle[6] }}</td>
+                <td>{{ cycle[7] }}</td>
+                <td>{{ cycle[8] }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+
+</body>
+</html>

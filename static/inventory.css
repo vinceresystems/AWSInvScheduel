@@ -1,0 +1,97 @@
+/* Inventory page styles */
+#inventory-container {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); /* Automatically adjusts columns */
+    grid-gap: 20px; /* Constant space between items */
+    padding: 20px;
+}
+
+.item-box {
+    border: 1px solid #ccc;
+    padding: 20px;
+    text-align: center;
+    border-radius: 10px;
+    box-shadow: 0px 4px 12px rgba(0, 0, 0, 0.1); /* Optional box shadow */
+    max-width: 250px; /* Ensure item boxes don't grow too wide */
+    word-wrap: break-word; /* Ensure text wraps within the box */
+}
+
+.item-box img {
+    width: 100px;
+    height: 100px;
+    object-fit: cover;
+    margin-bottom: 15px; /* Adds space below the image */
+}
+
+.quantity-controls {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    margin-top: 10px; /* Adds space above quantity controls */
+}
+
+.quantity-controls input {
+    width: 40px;
+    text-align: center;
+    margin: 0 5px;
+}
+
+.item-box form {
+    margin-top: 20px;
+}
+
+/* Styling for the add-new-item box */
+.add-new-item {
+    border: 2px dashed #aaa;
+    padding: 20px;
+    cursor: pointer;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+}
+
+.add-new-item input[type="file"] {
+    display: block;
+    margin: 15px auto; /* Centers the file input */
+}
+
+.add-new-item button {
+    margin-top: 20px;
+    padding: 10px 15px;
+    background-color: #3498db;
+    color: white;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+}
+
+.add-new-item button:hover {
+    background-color: #2980b9;
+}
+
+/* Styling for the subparts list inside master parts */
+.subparts-list {
+    margin-top: 15px;
+    text-align: left; /* Align text to the left for better readability */
+    list-style-type: disc; /* Display as a bulleted list */
+    padding-left: 20px; /* Indent the list */
+}
+
+.subparts-list li {
+    margin-bottom: 5px; /* Add space between each subpart */
+}
+
+/* Styling for the components section in master parts */
+.master-part-header {
+    font-weight: bold;
+    margin-top: 10px;
+    text-align: center;
+}
+
+/* Responsive styling for smaller screens */
+@media (max-width: 768px) {
+    #inventory-container {
+        grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); /* Adjust column size for small screens */
+    }
+}

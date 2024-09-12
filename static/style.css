@@ -1,0 +1,242 @@
+/* Import the Roboto font from Google Fonts */
+@import url('https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap');
+
+/* General body styling */
+/* General body styling */
+body {
+    font-family: 'Roboto', sans-serif;
+    background-color: #F9FAFB; /* Light gray background */
+    color: #333; /* Soft dark gray text */
+    margin: 0;
+    padding: 0;
+    line-height: 1.6;
+}
+
+/* Header styling */
+h1 {
+    text-align: center;
+    margin-top: 40px;
+    color: #3498db; /* Soft blue primary color */
+    font-size: 2.5em;
+    font-weight: 700;
+}
+
+/* Table styling */
+table {
+    width: 90%;
+    margin: 40px auto;
+    border-collapse: collapse;
+    background-color: #FFFFFF; /* White table background */
+    border-radius: 12px; /* Rounded corners */
+    box-shadow: 0px 4px 12px rgba(0, 0, 0, 0.1); /* Soft shadow for depth */
+    overflow: hidden;
+}
+
+table th, table td {
+    padding: 16px 12px;
+    text-align: left;
+    font-size: 1em;
+    color: #333; /* Text color for table rows */
+    border-bottom: 1px solid #E0E0E0; /* Soft gray border between rows */
+    position: relative; /* Needed for proper alignment of elements */
+}
+
+th {
+    background-color: #3498db; /* Soft blue header background */
+    color: #FFFFFF; /* White text for header */
+    font-size: 1.2em;
+    font-weight: 500;
+}
+
+/* Table row hover effect */
+tr:hover {
+    background-color: #f1f8ff; /* Light blue hover effect */
+}
+
+/* Checkbox styling */
+input[type="checkbox"] {
+    width: 18px;
+    height: 18px;
+    margin-right: 10px;
+    position: absolute;
+    right: 10px; /* Push the checkbox to the far right */
+}
+
+/* Info button styling */
+.info-btn {
+    background-color: #3498db; /* Soft blue for the button */
+    color: white;
+    border: none;
+    border-radius: 50%; /* Maintain round aspect ratio */
+    padding: 4px 8px;
+    font-size: 12px;
+    cursor: pointer;
+    margin-left: 10px; /* Small margin between text and info button */
+    aspect-ratio: 1 / 1; /* Ensure the button remains round */
+}
+
+/* Tooltip container */
+.info-btn .tooltip-text {
+    visibility: hidden;
+    width: 300px; /* Make the tooltip wider so text fits in a single line */
+    background-color: #333;
+    color: #fff;
+    text-align: center;
+    padding: 10px;
+    border-radius: 12px; /* Rounded corners for the tooltip */
+    position: absolute;
+    z-index: 1;
+    bottom: 150%; /* Position above the button */
+    left: 50%;
+    transform: translateX(-50%); /* Center the tooltip horizontally */
+    opacity: 0;
+    transition: opacity 0.3s ease-in-out;
+    white-space: nowrap; /* Prevent text wrapping */
+}
+
+/* Tooltip arrow */
+.info-btn .tooltip-text::after {
+    content: '';
+    position: absolute;
+    top: 100%; /* Position at the bottom of the tooltip */
+    left: 50%;
+    margin-left: -5px;
+    border-width: 5px;
+    border-style: solid;
+    border-color: #333 transparent transparent transparent; /* Arrow color matches the tooltip background */
+}
+
+/* Show the tooltip when hovering */
+.info-btn:hover .tooltip-text {
+    visibility: visible;
+    opacity: 1;
+}
+
+/* Button styling */
+button {
+    background: linear-gradient(135deg, #3498db, #2ecc71); /* Soft blue to green gradient */
+    color: #FFFFFF;
+    border: none;
+    padding: 20px 24px;
+    cursor: pointer;
+    border-radius: 8px;
+    font-size: 16px;
+    font-weight: 500;
+    transition: background 0.3s ease;
+}
+
+/* Button hover effect */
+button:hover {
+    background: linear-gradient(135deg, #2ecc71, #3498db); /* Reverse gradient on hover */
+}
+
+/* Total parts produced section styling */
+ul {
+    list-style-type: none;
+    padding: 0;
+    text-align: center;
+    font-size: 1.2em;
+}
+
+li {
+    margin: 10px 0;
+    color: #3498db; /* Soft blue text */
+}
+
+/* Master summary table styling */
+h2 {
+    color: #3498db; /* Soft blue for section titles */
+    text-align: center;
+    margin-top: 40px;
+    font-size: 2em;
+    font-weight: 500;
+}
+
+/* Additional table styling for master summary */
+table th, table td {
+    font-size: 16px;
+    padding: 16px 12px;
+}
+
+/* Accent color for important areas */
+strong {
+    color: #2ecc71; /* Green for emphasis */
+}
+/* Button styling with extra spacing */
+button.submit-btn, button.undo-btn {
+    background: linear-gradient(135deg, #3498db, #2ecc71); /* Soft blue to green gradient */
+    color: #FFFFFF;
+    border: none;
+    padding: 12px 24px;
+    cursor: pointer;
+    border-radius: 8px;
+    font-size: 16px;
+    font-weight: 500;
+    margin: 20px 15px; /* Extra margin for better spacing */
+    transition: background 0.3s ease;
+}
+
+/* Button hover effect */
+button.submit-btn:hover, button.undo-btn:hover {
+    background: linear-gradient(135deg, #2ecc71, #3498db); /* Reverse gradient on hover */
+}
+/* Inventory page styles */
+#inventory-container {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: space-around;
+}
+
+.item-box {
+    border: 1px solid #ccc;
+    padding: 10px;
+    text-align: center;
+    width: 150px;
+    margin: 10px;
+}
+
+.item-box img {
+    width: 100px;
+    height: 100px;
+    object-fit: cover;
+}
+
+.quantity-controls {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+.quantity-controls input {
+    width: 40px;
+    text-align: center;
+    margin: 0 5px;
+}
+
+.add-new-item {
+    border: 2px dashed #aaa;
+    padding: 20px;
+    cursor: pointer;
+}
+
+
+/* Responsive styling for smaller screens */
+@media (max-width: 768px) {
+    table, th, td {
+        font-size: 0.9em;
+    }
+
+    h1 {
+        font-size: 2em;
+    }
+
+    h2 {
+        font-size: 1.5em;
+    }
+
+    button {
+        padding: 10px 18px;
+        font-size: 14px;
+    }
+}
+

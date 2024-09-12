@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <link rel="stylesheet" type="text/css" href="{{ url_for('static', filename='style.css') }}">
+    <link rel="stylesheet" type="text/css" href="{{ url_for('static', filename='inventory.css') }}">
+    <title>Inventory</title>
+</head>
+
+<body>
+    <h1>Inventory Page</h1>
+    <a href="{{ url_for('production.index') }}">Go to Production Schedule</a>
+
+    <div id="inventory-container">
+        <!-- Loop through items from the database and display them -->
+        {% for item in items %}
+        <div class="item-box">
+            <img src="{{ url_for('uploaded_file', filename=item['image']) }}" alt="Item Image">
+            <p class="item-name">{{ item['name'] }}</p>
+            <p>Quantity: {{ item['quantity'] }}</p>
+
+            <!-- Check if the item has subparts (master parts) -->
+            {% if item.subparts is defined %}
+            <h4>Subparts:</h4>
+            <ul>
+                {% if item.subparts %}
+                    {% for subpart in item.subparts %}
+                        <li>{{ subpart['name'] }} - Required: {{ subpart['quantity'] }} (Available: {{ subpart['available_quantity'] }})</li>
+                    {% endfor %}
+                {% else %}
+                    <li>No subparts available.</li>
+                {% endif %}
+            </ul>
+            {% endif %}
+
+            <!-- Increment/Decrement buttons for both master parts and regular items -->
+            <div class="quantity-controls">
+                {% if item.subparts is defined and item.subparts|length > 0 %}
+                <!-- Increment/Decrement buttons for master parts -->
+                <form method="POST" action="{{ url_for('inventory.increment_master_part', master_part_id=item['id']) }}">
+                    <button type="submit">+ Increment Master Part</button>
+                </form>
+                
+                <form method="POST" action="{{ url_for('inventory.decrement_master_part', master_part_id=item['id']) }}">
+                    <button type="submit">- Decrement Master Part</button>
+                </form>
+                {% else %}
+                <!-- Increment/Decrement buttons for regular inventory items -->
+                <form method="POST" action="{{ url_for('inventory.increment_item', item_id=item['id']) }}">
+                    <button type="submit">+</button>
+                </form>
+                <form method="POST" action="{{ url_for('inventory.decrement_item', item_id=item['id']) }}">
+                    <button type="submit">-</button>
+                </form>
+                {% endif %}
+            </div>
+
+            <!-- Remove item button -->
+            <form method="POST" action="{{ url_for('inventory.remove_item', item_id=item['id']) }}">
+                <button type="submit">Remove Item</button>
+            </form>
+        </div>
+        {% endfor %}
+    </div>
+
+    <!-- Form to add a new inventory item -->
+    <div class="add-new-item">
+        <h2>Add New Inventory Item</h2>
+        <form method="POST" action="{{ url_for('inventory.add_item') }}" enctype="multipart/form-data">
+            <input type="text" name="name" placeholder="Item Name" required>
+            <input type="number" name="quantity" placeholder="Quantity" min="1" required>
+            <input type="file" name="image" accept="image/*">
+            <button type="submit">+ Add New Item</button>
+        </form>
+    </div>
+
+    <!-- Form to create a master part -->
+    <h2>Create a Master Part</h2>
+    <form method="POST" action="{{ url_for('inventory.add_master_part') }}" enctype="multipart/form-data">
+        <input type="text" name="master_part_name" placeholder="Master Part Name" required>
+
+        <h3>Select Parts to Include</h3>
+        <div id="select-parts">
+            {% for item in items %}
+            <div>
+                <label>
+                    <input type="checkbox" name="part_ids" value="{{ item['id'] }}"> 
+                    {{ item['name'] }} (Available: {{ item['quantity'] }})
+                </label>
+            </div>
+            {% endfor %}
+        </div>
+
+        <h3>Upload Image for Master Part</h3>
+        <input type="file" name="master_part_image" accept="image/*">
+
+        <button type="submit">Create Master Part</button>
+    </form>
+</body>
+</html>
