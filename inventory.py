@@ -2,6 +2,7 @@ from flask import Blueprint, render_template, request, redirect, url_for
 from database import get_db_connection, get_master_parts_with_quantities
 from werkzeug.utils import secure_filename
 import os
+from linear import create_linear_task
 
 inventory_bp = Blueprint('inventory', __name__)
 
