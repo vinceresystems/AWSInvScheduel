@@ -7,17 +7,69 @@ TEAM_ID = "907e99f2-9d02-4126-ad7b-794611e94a27"  # Use the correct Linear team 
 COMPLETED_STATE_ID = "9941892d-25da-4884-a1a5-5780c6b04911"  # Replace with your "Done" state ID
 # Function to create a Linear task and assign it to a specific person
 # Define the state ID for "Completed" in Linear
+def update_linear_task_assignee(task_id, new_assignee_id):
+    url = "https://api.linear.app/graphql"
 
-def create_linear_task(person_name, bed_number, assignee_id):
+    """
+    Updates the assignee of a Linear task using the task ID and new assignee's ID.
+    
+    :param task_id: The ID of the Linear task (issue) to update
+    :param new_assignee_id: The ID of the new assignee (Linear user)
+    :return: True if the update was successful, False otherwise
+    """
+    # GraphQL mutation to update the issue (task) assignee
+    query = """
+    mutation UpdateIssue($issueId: String!, $assigneeId: String!) {
+      issueUpdate(id: $issueId, input: { assigneeId: $assigneeId }) {
+        success
+        issue {
+          id
+          assignee {
+            id
+            name
+          }
+        }
+      }
+    }
+    """
+    
+    # Define the variables for the mutation
+    variables = {
+        "issueId": task_id,
+        "assigneeId": new_assignee_id
+    }
+
+    # Set the headers with the API key for authentication
+    headers = {
+        "Authorization": f"{LINEAR_API_TOKEN}",
+        "Content-Type": "application/json"
+    }
+
+    # Send the request to the Linear API
+    response = requests.post(url, json={"query": query, "variables": variables}, headers=headers)
+
+    if response.status_code == 200:
+        data = response.json()
+        if data.get("data", {}).get("issueUpdate", {}).get("success", False):
+            print(f"Task {task_id} successfully reassigned to user {new_assignee_id}.")
+            return True
+        else:
+            print(f"Failed to reassign task {task_id}.")
+    else:
+        print(f"Failed to reach Linear API: {response.status_code}, {response.text}")
+    
+    return False
+def create_linear_task(person_name, bed_number, assignee_id, start_time=None, end_time=None, due_date=None):
     url = "https://api.linear.app/graphql"
     headers = {
         "Authorization": f"{LINEAR_API_TOKEN}",
         "Content-Type": "application/json"
     }
 
+    # Define the GraphQL query
     query = """
-    mutation($teamId: String!, $title: String!, $description: String!, $assigneeId: String!) {
-        issueCreate(input: {teamId: $teamId, title: $title, description: $description, assigneeId: $assigneeId}) {
+    mutation($teamId: String!, $title: String!, $description: String!, $assigneeId: String!, $dueDate: TimelessDate) {
+        issueCreate(input: {teamId: $teamId, title: $title, description: $description, assigneeId: $assigneeId, dueDate: $dueDate}) {
             success
             issue {
                 id
@@ -30,9 +82,15 @@ def create_linear_task(person_name, bed_number, assignee_id):
         }
     }
     """
-  
-    title = f"Bed change assigned to {person_name}"
-    description = f"Bed {bed_number} has been assigned to {person_name}. Please review the change."
+
+    # Define title and description with timeframes if provided
+    title = f"Task assigned to {person_name} (Bed {bed_number})"
+    description = f"Bed {bed_number} has been assigned to {person_name}."
+    
+    if start_time and end_time:
+        description += f" Start Time: {start_time}, End Time: {end_time}."
+    else:
+        description += " Please review the task."
 
     # Ensure assignee_id is a string
     if not isinstance(assignee_id, str):
@@ -44,40 +102,39 @@ def create_linear_task(person_name, bed_number, assignee_id):
             "teamId": TEAM_ID,
             "title": title,
             "description": description,
-            "assigneeId": assignee_id  # Assignee ID must be a string
+            "assigneeId": assignee_id,
+            "dueDate": due_date  # Make sure dueDate is in the format "YYYY-MM-DD"
         }
     }
+
+    # Print payload for debugging
+    print(f"Payload: {json.dumps(payload, indent=2)}")
 
     try:
         response = requests.post(url, headers=headers, data=json.dumps(payload))
 
-        # Check if the response is valid JSON
+        # Print full response for debugging
+        print(f"Response Status Code: {response.status_code}")
+        print(f"Response Content: {response.text}")
+
         if response.status_code == 200:
-            try:
-                data = response.json()
-                # Check if the 'data' field exists
-                if data and "data" in data:
-                    issue = data.get("data", {}).get("issueCreate", {}).get("issue", {})
-                    if issue:
-                        task_id = issue.get("id")
-                        assignee = issue.get("assignee", {}).get("name")
-                        print(f"Task created: {issue['title']} (ID: {task_id}), Assigned to: {assignee}")
-                        return task_id
-                    else:
-                        print(f"Error: No issue returned in response: {data}")
-                        return None
-                else:
-                    print(f"Error: Unexpected data format in response: {data}")
-                    return None
-            except json.JSONDecodeError:
-                print(f"Error: Failed to parse JSON response: {response.text}")
-                return None
+            data = response.json()
+            issue = data.get("data", {}).get("issueCreate", {}).get("issue", {})
+            if issue:
+                task_id = issue.get("id")
+                assignee = issue.get("assignee", {}).get("name")
+                print(f"Task created: {issue['title']} (ID: {task_id}), Assigned to: {assignee}")
+                return task_id
+            else:
+                print(f"Error: No issue returned in response: {data}")
         else:
             print(f"Error creating task: {response.status_code} - {response.text}")
-            return None
     except Exception as e:
         print(f"An exception occurred: {str(e)}")
-        return None
+
+    return None
+
+
 # Fetch Linear team members and populate the 'people' table
 def fetch_and_populate_linear_team():
     url = "https://api.linear.app/graphql"

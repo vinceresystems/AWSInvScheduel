@@ -5,9 +5,44 @@ from linear import create_linear_task
 from linear import mark_task_complete
 from linear import COMPLETED_STATE_ID
 
+
+def assign_tasks_to_aiden():
+    """Assign tasks to Aiden for each print and each day in the production schedule."""
+    conn = get_db_connection()
+    c = conn.cursor()
+
+    # Fetch the list of users from Linear
+
+    # Find Aiden's Linear user ID
+    aiden_linear_id = "962e8f8d-f46a-42ac-b71f-90377ebc9c4c"
+    # Assign tasks for each day in the production table
+    start_date = datetime.today()
+    
+    for day in range(1, 7):
+        task_due_date = (start_date + timedelta(days=day-1)).strftime('%Y-%m-%d')
+
+        # Create tasks for Print 1, 2, and 3 and assign them to Aiden
+        for print_num in range(1, 4):
+            print(f"Creating task for Print {print_num} on day {day}")
+            task_id = create_linear_task(
+                person_name="Aiden",
+                bed_number=print_num,
+                assignee_id=aiden_linear_id,
+                start_time=f"{10 + (print_num - 1) * 2}:00 AM",
+                end_time=f"{10 + print_num * 2}:00 PM",
+                due_date=task_due_date
+            )
+
+            if task_id:
+                c.execute(f"UPDATE production SET print{print_num}_task_id = ?, print{print_num}_person = ? WHERE day = ?", (task_id, "Aiden", day))
+    conn.commit()
+    conn.close()
+
+    
 def init_db():
     conn = get_db_connection()
     c = conn.cursor()
+    # assign_tasks_to_aiden()
 
     # Create production table for 6 days if it doesn't exist
     c.execute('''
@@ -178,10 +213,97 @@ def get_schedule():
 def get_master_summary():
     conn = get_db_connection()
     c = conn.cursor()
-    c.execute("SELECT * FROM master_summary")
+
+    # Fetch the master summary along with bed changes for each cycle
+    c.execute('''
+        SELECT ms.cycle, ms.start_date, ms.end_date, ms.total_rails, ms.total_iphones, ms.total_logos, 
+               ms.total_knobs, ms.total_ipadbase, ms.total_snapfits, bcs.person_name, bcs.changes
+        FROM master_summary ms
+        LEFT JOIN bed_changes_summary bcs ON ms.cycle = bcs.cycle
+        ORDER BY ms.cycle
+    ''')
+    
     master_summary = c.fetchall()
     conn.close()
-    return master_summary
+    
+    # Structure the data so that cycles are grouped and bed changes are listed per cycle
+    summary_with_bed_changes = {}
+    
+    for row in master_summary:
+        cycle = row[0]
+        # Each cycle will have its own dictionary entry
+        if cycle not in summary_with_bed_changes:
+            summary_with_bed_changes[cycle] = {
+                'cycle': row[0],
+                'start_date': row[1],
+                'end_date': row[2],
+                'total_rails': row[3],
+                'total_iphones': row[4],
+                'total_logos': row[5],
+                'total_knobs': row[6],
+                'total_ipadbase': row[7],
+                'total_snapfits': row[8],
+                'bed_changes': []
+            }
+
+        # Append the bed changes and who made them
+        if row[9]:  # If person_name exists
+            summary_with_bed_changes[cycle]['bed_changes'].append({
+                'person_name': row[9],
+                'changes': row[10]
+            })
+    
+    # Return the grouped master summary as a list of dictionaries
+    return list(summary_with_bed_changes.values())
+from linear import update_linear_task_assignee
+
+def change_task_assignee(task_id, new_assignee_id):
+    """
+    Updates the assignee of a Linear task.
+    """
+    success = update_linear_task_assignee(task_id, new_assignee_id)
+    if success:
+        print(f"Task {task_id} successfully reassigned.")
+    else:
+        print(f"Failed to reassign task {task_id}.")
+def update_assignee_for_day(day, print_num, new_person):
+    conn = get_db_connection()
+    c = conn.cursor()
+
+    # Find the task ID and current assignee for the specified day and print number
+    c.execute(f"SELECT print{print_num}_task_id, print{print_num}_person FROM production WHERE day=?", (day,))
+    result = c.fetchone()
+    
+    if not result:
+        print(f"No task found for Print {print_num} on day {day}.")
+        return
+    
+    task_id, current_assignee = result
+
+    if not task_id:
+        print(f"No task ID found for Print {print_num} on day {day}.")
+        return
+
+    # Find new assignee Linear ID
+    c.execute("SELECT linear_user_id FROM people WHERE name = ?", (new_person,))
+    result = c.fetchone()
+    
+    if not result:
+        print(f"No Linear user ID found for {new_person}.")
+        return
+    
+    new_assignee_id = result[0]
+
+    # Update the task assignee in Linear
+    change_task_assignee(task_id, new_assignee_id)
+
+    # Update the production table with the new assignee, but keep the same task ID
+    c.execute(f"UPDATE production SET print{print_num}_person = ? WHERE day = ?", (new_person, day))
+    conn.commit()
+    conn.close()
+
+    print(f"Print {print_num} for day {day} reassigned to {new_person}.")
+
 
 def get_master_parts_with_quantities():
     conn = get_db_connection()
@@ -213,25 +335,27 @@ def update_all_days(data, num_printers):
         print2_parts = {'logos': 10, 'knobs': 8}
         print3_parts = {'iphones': 6, 'logos': 4, 'ipadbase': 12}
 
-        current_date = datetime.today().strftime('%Y-%m-%d')
+        # Get the start date from the form data (default to today if not provided)
+        start_date_str = data.get('start_date', datetime.today().strftime('%Y-%m-%d'))
+        start_date = datetime.strptime(start_date_str, '%Y-%m-%d')
 
         for day in range(1, 7):
             # Fetch previous states and task IDs for the day
-            c.execute("SELECT print1_done, print2_done, print3_done, print1_task_id, print2_task_id, print3_task_id FROM production WHERE day=?", (day,))
+            c.execute("SELECT print1_done, print2_done, print3_done, print1_task_id, print2_task_id, print3_task_id, print1_person, print2_person, print3_person FROM production WHERE day=?", (day,))
             previous_state = c.fetchone()
+            task_due_date = (start_date + timedelta(days=day-1)).strftime('%Y-%m-%d')
 
             if previous_state is None:
                 continue
 
             prev_print1_done, prev_print2_done, prev_print3_done = previous_state[:3]
             prev_print1_task_id, prev_print2_task_id, prev_print3_task_id = previous_state[3:6]
+            prev_print1_person, prev_print2_person, prev_print3_person = previous_state[6:9]
 
             # Check if print1, print2, or print3 are marked as done in the new form submission
             print1_done = f'print1_done_{day}' in data
             print2_done = f'print2_done_{day}' in data
             print3_done = f'print3_done_{day}' in data
-
-            # Debugging print to check checkbox values and task IDs
 
             # Retrieve the person assigned to each print
             print1_person = data.get(f'print1_person_{day}', '')
@@ -249,33 +373,57 @@ def update_all_days(data, num_printers):
             print2_person_id, print2_person_linear_id = get_person_linear_id(print2_person)
             print3_person_id, print3_person_linear_id = get_person_linear_id(print3_person)
 
-            # Debugging prints to trace task assignment
-     
-            # Debugging before task creation
-            print(f"Day {day} - Print 1: Person Linear ID: {print1_person_linear_id}, Prev Done: {prev_print1_done}, Prev Task ID: {prev_print1_task_id}")
-            print(f"Day {day} - Print 2: Person Linear ID: {print2_person_linear_id}, Prev Done: {prev_print2_done}, Prev Task ID: {prev_print2_task_id}")
-            print(f"Day {day} - Print 3: Person Linear ID: {print3_person_linear_id}, Prev Done: {prev_print3_done}, Prev Task ID: {prev_print3_task_id}")
+            # Task creation or assignee update logic
+            if print1_person_linear_id:
+                if not prev_print1_task_id:
+                    print(f"Creating task for Print 1 on day {day}")
+                    task_id = create_linear_task(
+                        person_name=print1_person,
+                        bed_number=5,
+                        assignee_id=print1_person_linear_id,
+                        start_time="10:00 AM",
+                        end_time="02:00 PM",
+                        due_date=task_due_date
+                    )
+                    if task_id:
+                        c.execute("UPDATE production SET print1_task_id = ?, date = ? WHERE day = ?", (task_id, task_due_date, day))
+                elif print1_person != prev_print1_person:
+                    print(f"Updating assignee for Print 1 task on day {day}")
+                    change_task_assignee(prev_print1_task_id, print1_person_linear_id)
 
-            # Task creation logic
-            if print1_person_linear_id and not prev_print1_done and not prev_print1_task_id:
-                print(f"Creating task for Print 1 on day {day}")
-                task_id = create_linear_task(print1_person, day, print1_person_linear_id)
-                c.execute("UPDATE production SET print1_task_id = ? WHERE day = ?", (task_id, day))
+            if print2_person_linear_id:
+                if not prev_print2_task_id:
+                    print(f"Creating task for Print 2 on day {day}")
+                    task_id = create_linear_task(
+                        person_name=print2_person,
+                        bed_number=5,
+                        assignee_id=print2_person_linear_id,
+                        start_time="02:00 PM",
+                        end_time="06:00 PM",
+                        due_date=task_due_date
+                    )
+                    if task_id:
+                        c.execute("UPDATE production SET print2_task_id = ?, date = ? WHERE day = ?", (task_id, task_due_date, day))
+                elif print2_person != prev_print2_person:
+                    print(f"Updating assignee for Print 2 task on day {day}")
+                    update_task_assignee(prev_print2_task_id, print2_person_linear_id)
 
-            if print2_person_linear_id and not prev_print2_done and not prev_print2_task_id:
-                print(f"Creating task for Print 2 on day {day}")
-                task_id = create_linear_task(print2_person, day, print2_person_linear_id)
-                c.execute("UPDATE production SET print2_task_id = ? WHERE day = ?", (task_id, day))
-
-            if print3_person_linear_id and not prev_print3_done and not prev_print3_task_id:
-                print(f"Creating task for Print 3 on day {day}")
-                task_id = create_linear_task(print3_person, day, print3_person_linear_id)
-                c.execute("UPDATE production SET print3_task_id = ? WHERE day = ?", (task_id, day))
-
-            # Debugging before marking tasks as complete
-            print(f"Day {day} - Checking task completion for Print 1: Prev Done: {prev_print1_done}, Done: {print1_done}, Task ID: {prev_print1_task_id}")
-            print(f"Day {day} - Checking task completion for Print 2: Prev Done: {prev_print2_done}, Done: {print2_done}, Task ID: {prev_print2_task_id}")
-            print(f"Day {day} - Checking task completion for Print 3: Prev Done: {prev_print3_done}, Done: {print3_done}, Task ID: {prev_print3_task_id}")
+            if print3_person_linear_id:
+                if not prev_print3_task_id:
+                    print(f"Creating task for Print 3 on day {day}")
+                    task_id = create_linear_task(
+                        person_name=print3_person,
+                        bed_number=5,
+                        assignee_id=print3_person_linear_id,
+                        start_time="06:00 PM",
+                        end_time="10:00 PM",
+                        due_date=task_due_date
+                    )
+                    if task_id:
+                        c.execute("UPDATE production SET print3_task_id = ?, date = ? WHERE day = ?", (task_id, task_due_date, day))
+                elif print3_person != prev_print3_person:
+                    print(f"Updating assignee for Print 3 task on day {day}")
+                    update_task_assignee(prev_print3_task_id, print3_person_linear_id)
 
             # Mark tasks as complete when the corresponding print is done
             if prev_print1_done == 0 and print1_done and prev_print1_task_id:
@@ -289,21 +437,6 @@ def update_all_days(data, num_printers):
             if prev_print3_done == 0 and print3_done and prev_print3_task_id:
                 print(f"Marking Print 3 task {prev_print3_task_id} as complete for day {day}")
                 mark_task_complete(prev_print3_task_id, COMPLETED_STATE_ID)
-
-
-            # Update bed changes based on the person's assignment and completion of tasks
-            def update_bed_changes(person_id, prev_done, new_done):
-                if person_id:
-                    if not prev_done and new_done:  # Task is newly marked as done
-                        c.execute('INSERT OR IGNORE INTO bed_changes (person_id, changes) VALUES (?, 0)', (person_id,))
-                        c.execute('UPDATE bed_changes SET changes = changes + 1 WHERE person_id = ?', (person_id,))
-                    elif prev_done and not new_done:  # Task is undone
-                        c.execute('UPDATE bed_changes SET changes = changes - 1 WHERE person_id = ?', (person_id,))
-
-            # Call update_bed_changes for each print task
-            update_bed_changes(print1_person_id, prev_print1_done, print1_done)
-            update_bed_changes(print2_person_id, prev_print2_done, print2_done)
-            update_bed_changes(print3_person_id, prev_print3_done, print3_done)
 
             # Reset part counts for each day
             rails = iphones = logos = knobs = ipadbase = snapfits = 0
@@ -331,11 +464,10 @@ def update_all_days(data, num_printers):
                 UPDATE production 
                 SET print1_done=?, print2_done=?, print3_done=?, 
                     rails=?, iphones=?, logos=?, knobs=?, ipadbase=?, snapfits=?, 
-                    print1_person=?, print2_person=?, print3_person=?, 
-                    date=COALESCE(date, ?) 
+                    print1_person=?, print2_person=?, print3_person=? 
                 WHERE day=?
             ''', (print1_done, print2_done, print3_done, rails, iphones, logos, knobs, ipadbase, snapfits, 
-                  print1_person, print2_person, print3_person, current_date, day))
+                  print1_person, print2_person, print3_person, day))
 
         # Fetch the updated schedule
         c.execute("SELECT * FROM production")

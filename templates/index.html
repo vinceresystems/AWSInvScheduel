@@ -278,23 +278,35 @@
                 <th>Total Knobs</th>
                 <th>Total iPadBase</th>
                 <th>Total Snapfits</th>
+                <th>Bed Changes (Person - Changes)</th>  <!-- New column for bed changes -->
             </tr>
         </thead>
         <tbody>
             {% for cycle in master_summary %}
             <tr>
-                <td>Cycle {{ cycle[0] }}</td>
-                <td>{{ cycle[1] }}</td>
-                <td>{{ cycle[2] }}</td>
-                <td>{{ cycle[3] }}</td>
-                <td>{{ cycle[4] }}</td>
-                <td>{{ cycle[5] }}</td>
-                <td>{{ cycle[6] }}</td>
-                <td>{{ cycle[7] }}</td>
-                <td>{{ cycle[8] }}</td>
+                <td>Cycle {{ cycle.cycle }}</td>
+                <td>{{ cycle.start_date }}</td>
+                <td>{{ cycle.end_date }}</td>
+                <td>{{ cycle.total_rails }}</td>
+                <td>{{ cycle.total_iphones }}</td>
+                <td>{{ cycle.total_logos }}</td>
+                <td>{{ cycle.total_knobs }}</td>
+                <td>{{ cycle.total_ipadbase }}</td>
+                <td>{{ cycle.total_snapfits }}</td>
+                <td>
+                    <ul>
+                        {% for bed_change in cycle.bed_changes %}
+                        <li>{{ bed_change.person_name }}: {{ bed_change.changes }} changes</li>
+                        {% else %}
+                        <li>No changes</li>
+                        {% endfor %}
+                    </ul>
+                </td>
             </tr>
             {% endfor %}
         </tbody>
     </table>
+    
+    
 </body>
 </html>
