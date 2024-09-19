@@ -364,9 +364,12 @@ def get_master_parts_with_quantities():
     conn.close()
     return master_part_data
 def get_db_connection():
-    conn = sqlite3.connect('production.db')
-    conn.row_factory = sqlite3.Row  # Ensures rows are accessed like dictionaries
+    # Store the SQLite DB in the /tmp directory
+    db_path = '/tmp/production.db'
+    conn = sqlite3.connect(db_path)
+    conn.row_factory = sqlite3.Row
     return conn
+
 def update_all_days(data, num_printers):
     with get_db_connection() as conn:
         c = conn.cursor()
