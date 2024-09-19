@@ -63,11 +63,27 @@ def index():
 
     conn = get_db_connection()
     c = conn.cursor()
-    c.execute("SELECT SUM(rails), SUM(iphones), SUM(logos), SUM(knobs), SUM(ipadbase), SUM(snapfits) FROM production")
+    c.execute("""
+        SELECT SUM(rail), SUM(iphone_base), SUM(ipad_base), SUM(faceplate),
+               SUM(logo), SUM(snapfit), SUM(knob)
+        FROM production
+    """)
     totals = c.fetchone()
     conn.close()
 
-    return render_template('index.html', schedule=schedule, totals=totals, master_summary=master_summary, people=people, bed_changes=bed_changes)
+    totals_dict = {
+        'rail': totals[0] or 0,
+        'iphone_base': totals[1] or 0,
+        'ipad_base': totals[2] or 0,
+        'faceplate': totals[3] or 0,
+        'logo': totals[4] or 0,
+        'snapfit': totals[5] or 0,
+        'knob': totals[6] or 0,
+    }
+
+    return render_template('index.html', schedule=schedule, totals=totals_dict,
+                           master_summary=master_summary, people=people,
+                           bed_changes=bed_changes)
 
  
 
@@ -81,7 +97,10 @@ def submit_master():
     c.execute("INSERT INTO production_backup SELECT * FROM production")
 
     # Get the total counts of each part
-    c.execute("SELECT SUM(rails), SUM(iphones), SUM(logos), SUM(knobs), SUM(ipadbase), SUM(snapfits) FROM production")
+    c.execute("""
+        SELECT SUM(rail), SUM(iphone_base), SUM(logo), SUM(knob), SUM(ipad_base), SUM(snapfit), SUM(faceplate)
+        FROM production
+    """)
     totals = c.fetchone()
 
     # Get the current cycle number and increment it
@@ -89,17 +108,21 @@ def submit_master():
     cycle = c.fetchone()[0] + 1
 
     # Get the date range from the production table where tasks are done
-    c.execute("SELECT MIN(date), MAX(date) FROM production WHERE print1_done = 1 OR print2_done = 1 OR print3_done = 1")
+    c.execute("""
+        SELECT MIN(date), MAX(date) 
+        FROM production 
+        WHERE print1_done = 1 OR print2_done = 1 OR print3_done = 1
+    """)
     date_range = c.fetchone()
     start_date, end_date = date_range[0], date_range[1]
 
     # Insert the master summary
     c.execute('''
         INSERT INTO master_summary (
-            cycle, start_date, end_date, total_rails, total_iphones, total_logos, 
-            total_knobs, total_ipadbase, total_snapfits
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-    ''', (cycle, start_date, end_date, totals[0], totals[1], totals[2], totals[3], totals[4], totals[5]))
+            cycle, start_date, end_date, total_rail, total_iphone_base, total_logo, 
+            total_knob, total_ipad_base, total_snapfit, total_faceplate
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    ''', (cycle, start_date, end_date, totals[0], totals[1], totals[2], totals[3], totals[4], totals[5], totals[6]))
 
     # Fetch bed changes for each person and insert them into the bed_changes_summary
     c.execute('''
@@ -119,13 +142,16 @@ def submit_master():
     c.execute('''
         UPDATE production 
         SET print1_done=0, print2_done=0, print3_done=0, 
-            rails=0, iphones=0, logos=0, knobs=0, ipadbase=0, snapfits=0, date=NULL
+            rail=0, iphone_base=0, logo=0, knob=0, ipad_base=0, snapfit=0, faceplate=0, date=NULL
     ''')
+    # Reset bed_changes counts
+    c.execute('UPDATE bed_changes SET changes = 0')
 
     conn.commit()
     conn.close()
 
     return redirect(url_for('production.index'))
+
 
 
 @production_bp.route('/undo_last_submission', methods=['POST'])
@@ -159,19 +185,30 @@ def update():
     num_printers = int(request.form.get('num_printers', 1))  # Default to 1 if not provided
 
     # Update the production schedule with the form data and the number of printers
-    schedule = update_all_days(request.form, num_printers)
-
-    # Convert schedule to list of dictionaries
-    schedule_list = [dict(row) for row in schedule]
+    schedule_list = update_all_days(request.form, num_printers)
 
     # Fetch totals
     conn = get_db_connection()
     c = conn.cursor()
-    c.execute("SELECT SUM(rails), SUM(iphones), SUM(logos), SUM(knobs), SUM(ipadbase), SUM(snapfits) FROM production")
-    totals = list(c.fetchone())
+    c.execute("""
+        SELECT SUM(rail), SUM(iphone_base), SUM(ipad_base), SUM(faceplate),
+               SUM(logo), SUM(snapfit), SUM(knob)
+        FROM production
+    """)
+    totals = c.fetchone()
     conn.close()
+
+    totals_dict = {
+        'rail': totals[0] or 0,
+        'iphone_base': totals[1] or 0,
+        'ipad_base': totals[2] or 0,
+        'faceplate': totals[3] or 0,
+        'logo': totals[4] or 0,
+        'snapfit': totals[5] or 0,
+        'knob': totals[6] or 0,
+    }
 
     # Fetch updated bed changes and include it in the response
     bed_changes = get_bed_changes()
 
-    return jsonify({"schedule": schedule_list, "totals": totals, "bed_changes": bed_changes})
+    return jsonify({"schedule": schedule_list, "totals": totals_dict, "bed_changes": bed_changes})

@@ -163,15 +163,24 @@ def fetch_and_populate_linear_team():
 
         # Insert fetched members into the SQLite `people` table
         conn = sqlite3.connect('production.db')
+        conn.row_factory = sqlite3.Row
         c = conn.cursor()
 
-        # Clear the current people table
-        c.execute("DELETE FROM people")
+        # Clear the current people table (optional, depending on your use case)
+        # c.execute("DELETE FROM people")
         
         # Insert new people with their Linear user IDs
         for member in members:
             c.execute('INSERT OR IGNORE INTO people (name, linear_user_id) VALUES (?, ?)', (member['name'], member['id']))
-        
+
+        # Ensure bed_changes entries exist for all people
+        c.execute('SELECT id FROM people')
+        people_ids = c.fetchall()
+        for person in people_ids:
+            person_id = person['id']
+            # Insert or ignore into bed_changes table using the integer person_id
+            c.execute('INSERT OR IGNORE INTO bed_changes (person_id, changes) VALUES (?, 0)', (person_id,))
+
         conn.commit()
         conn.close()
 

@@ -72,25 +72,31 @@
 
         // Function to update totals dynamically
         function updateTotals(totals) {
-            document.getElementById("total-rails").innerText = totals[0] * numberOfPrinters;
-            document.getElementById("total-iphones").innerText = totals[1] * numberOfPrinters;
-            document.getElementById("total-logos").innerText = totals[2] * numberOfPrinters;
-            document.getElementById("total-knobs").innerText = totals[3] * numberOfPrinters;
-            document.getElementById("total-ipadbase").innerText = totals[4] * numberOfPrinters;
-            document.getElementById("total-snapfits").innerText = totals[5] * numberOfPrinters;
-        }
+        document.getElementById("total-rails").innerText = (totals['rail'] || 0) * numberOfPrinters;
+        document.getElementById("total-iphones").innerText = (totals['iphone_base'] || 0) * numberOfPrinters;
+        document.getElementById("total-logos").innerText = (totals['logo'] || 0) * numberOfPrinters;
+        document.getElementById("total-knobs").innerText = (totals['knob'] || 0) * numberOfPrinters;
+        document.getElementById("total-ipadbase").innerText = (totals['ipad_base'] || 0) * numberOfPrinters;
+        document.getElementById("total-snapfits").innerText = (totals['snapfit'] || 0) * numberOfPrinters;
+        document.getElementById("total-faceplates").innerText = (totals['faceplate'] || 0) * numberOfPrinters;
+    }
 
-        // Function to update bed changes dynamically
+
         function updateBedChanges(bedChanges) {
-            const bedChangeList = document.getElementById("bed-change-list");
-            bedChangeList.innerHTML = ""; // Clear current list
+        console.log("Updating bed changes:", bedChanges);
+        const bedChangeList = document.getElementById("bed-change-list");
+        bedChangeList.innerHTML = "";  // Clear current list
 
-            bedChanges.forEach(change => {
-                const li = document.createElement("li");
-                li.textContent = `${change.person}: ${change.changes * numberOfPrinters} bed changes`;
-                bedChangeList.appendChild(li);
-            });
-        }
+        bedChanges.forEach(change => {
+            const li = document.createElement("li");
+            li.textContent = `${change.person}: ${change.changes} bed changes`;
+            bedChangeList.appendChild(li);
+        });
+    }
+
+
+
+
 
         // Adjust part count
         function adjustPartCount(partId, increment) {
@@ -171,58 +177,84 @@
             </thead>
             <tbody>
                 {% for day in schedule %}
-                <tr>
-                    <td>Day {{ day['day'] }}</td>
-                    <td>{{ day['date'] }}</td>
-                
-                    <!-- Print 1 -->
-                    <td>
-                        <label for="print1_done_{{ day['day'] }}">Print 1</label>
-                        <input type="checkbox" id="print1_done_{{ day['day'] }}" name="print1_done_{{ day['day'] }}" 
-                               {% if day['print1_done'] %} checked {% endif %} {% if not day['print1_person'] %} disabled {% endif %} 
-                               onchange="autoSubmit()">
-                    </td>
-                    <td>
-                        <select name="print1_person_{{ day['day'] }}" onchange="enableCheckbox('print1_done_{{ day['day'] }}', this.value)">
-                            <option value="">--Select Person--</option>
-                            {% for person in people %}
-                            <option value="{{ person }}" {% if day['print1_person'] == person %} selected {% endif %}>{{ person }}</option>
-                            {% endfor %}
-                        </select>
-                    </td>
-                
-                    <!-- Print 2 -->
-                    <td>
+               <!-- Inside your for loop over 'schedule' -->
+               <tr>
+                <td>Day {{ day['day'] }}</td>
+                <td>{{ day['date'] }}</td>
+
+                <!-- Print 1 (Always Print 1) -->
+                <td>
+                    <label for="print1_done_{{ day['day'] }}">Print 1</label>
+                    <input type="checkbox" id="print1_done_{{ day['day'] }}" name="print1_done_{{ day['day'] }}" 
+                           {% if day['print1_done'] %} checked {% endif %} {% if not day['print1_person'] %} disabled {% endif %} 
+                           onchange="autoSubmit()">
+                </td>
+                <td>
+                    <select name="print1_person_{{ day['day'] }}" onchange="enableCheckbox('print1_done_{{ day['day'] }}', this.value)">
+                        <option value="">--Select Person--</option>
+                        {% for person in people %}
+                        <option value="{{ person }}" {% if day['print1_person'] == person %} selected {% endif %}>{{ person }}</option>
+                        {% endfor %}
+                    </select>
+                </td>
+
+                <!-- Print 2 -->
+                <td>
+                    {% if day['day'] in [1, 2] %}
                         <label for="print2_done_{{ day['day'] }}">Print 2</label>
-                        <input type="checkbox" id="print2_done_{{ day['day'] }}" name="print2_done_{{ day['day'] }}" 
-                               {% if day['print2_done'] %} checked {% endif %} {% if not day['print2_person'] %} disabled {% endif %} 
-                               onchange="autoSubmit()">
-                    </td>
-                    <td>
-                        <select name="print2_person_{{ day['day'] }}" onchange="enableCheckbox('print2_done_{{ day['day'] }}', this.value)">
-                            <option value="">--Select Person--</option>
-                            {% for person in people %}
-                            <option value="{{ person }}" {% if day['print2_person'] == person %} selected {% endif %}>{{ person }}</option>
-                            {% endfor %}
-                        </select>
-                    </td>
-                
-                    <!-- Print 3 -->
-                    <td>
+                    {% elif day['day'] == 3 %}
+                        <label for="print2_done_{{ day['day'] }}">Print 3</label>
+                    {% elif day['day'] == 4 %}
+                        <label for="print2_done_{{ day['day'] }}">Print 5</label>
+                    {% elif day['day'] in [5, 6] %}
+                        <label for="print2_done_{{ day['day'] }}">Print 4</label>
+                    {% else %}
+                        <label for="print2_done_{{ day['day'] }}">No Print Assigned</label>
+                    {% endif %}
+                    <input type="checkbox" id="print2_done_{{ day['day'] }}" name="print2_done_{{ day['day'] }}" 
+                           {% if day['print2_done'] %} checked {% endif %} {% if not day['print2_person'] %} disabled {% endif %} 
+                           onchange="autoSubmit()">
+                </td>
+                <td>
+                    <select name="print2_person_{{ day['day'] }}" onchange="enableCheckbox('print2_done_{{ day['day'] }}', this.value)">
+                        <option value="">--Select Person--</option>
+                        {% for person in people %}
+                        <option value="{{ person }}" {% if day['print2_person'] == person %} selected {% endif %}>{{ person }}</option>
+                        {% endfor %}
+                    </select>
+                </td>
+
+               <!-- Print 3 -->
+                <td>
+                    {% if day['day'] in [1, 2] %}
+                        <label for="print3_done_{{ day['day'] }}">Print 2</label>
+                    {% elif day['day'] == 3 %}
                         <label for="print3_done_{{ day['day'] }}">Print 3</label>
-                        <input type="checkbox" id="print3_done_{{ day['day'] }}" name="print3_done_{{ day['day'] }}" 
-                               {% if day['print3_done'] %} checked {% endif %} {% if not day['print3_person'] %} disabled {% endif %} 
-                               onchange="autoSubmit()">
-                    </td>
-                    <td>
-                        <select name="print3_person_{{ day['day'] }}" onchange="enableCheckbox('print3_done_{{ day['day'] }}', this.value)">
-                            <option value="">--Select Person--</option>
-                            {% for person in people %}
-                            <option value="{{ person }}" {% if day['print3_person'] == person %} selected {% endif %}>{{ person }}</option>
-                            {% endfor %}
-                        </select>
-                    </td>
-                </tr>
+                    {% elif day['day'] == 4 %}
+                        <label for="print3_done_{{ day['day'] }}">Print 4</label>
+                    {% elif day['day'] == 5 %}
+                        <label for="print3_done_{{ day['day'] }}">Print 4</label>
+                    {% elif day['day'] == 6 %}
+                        <label for="print3_done_{{ day['day'] }}">Print 6</label>
+                    {% else %}
+                        <label for="print3_done_{{ day['day'] }}">No Print Assigned</label>
+                    {% endif %}
+                    <!-- Remove the disabled condition for Day 4 -->
+                    <input type="checkbox" id="print3_done_{{ day['day'] }}" name="print3_done_{{ day['day'] }}" 
+                        {% if day['print3_done'] %} checked {% endif %} 
+                        {% if not day['print3_person'] %} disabled {% endif %}
+                        onchange="autoSubmit()">
+                </td>
+                <td>
+                    <select name="print3_person_{{ day['day'] }}" onchange="enableCheckbox('print3_done_{{ day['day'] }}', this.value)">
+                        <option value="">--Select Person--</option>
+                        {% for person in people %}
+                        <option value="{{ person }}" {% if day['print3_person'] == person %} selected {% endif %}>{{ person }}</option>
+                        {% endfor %}
+                    </select>
+                </td>
+
+            </tr>
                 
                 
                 {% endfor %}
@@ -235,20 +267,26 @@
         <h2>Bed Changes</h2>
         <ul id="bed-change-list">
             {% for change in bed_changes %}
-                <li>{{ change['person'] }}: {{ change['changes'] }} bed changes</li>
+                <li>{{ change.person }}: {{ change.changes }} bed changes</li>
+            {% else %}
+                <li>No bed changes</li>
             {% endfor %}
         </ul>
     </div>
+    
+    
 
     <h2>Total Parts Produced (Current Cycle):</h2>
     <ul>
-        <li>Rails: <span id="total-rails">{{ totals[0] }}</span></li>
-        <li>iPhones: <span id="total-iphones">{{ totals[1] }}</span></li>
-        <li>Logos: <span id="total-logos">{{ totals[2] }}</span></li>
-        <li>Knobs: <span id="total-knobs">{{ totals[3] }}</span></li>
-        <li>iPadBase: <span id="total-ipadbase">{{ totals[4] }}</span></li>
-        <li>Snapfits: <span id="total-snapfits">{{ totals[5] }}</span></li>
+        <li>Rails: <span id="total-rails">{{ totals['rail'] }}</span></li>
+        <li>iPhones: <span id="total-iphones">{{ totals['iphone_base'] }}</span></li>
+        <li>Logos: <span id="total-logos">{{ totals['logo'] }}</span></li>
+        <li>Knobs: <span id="total-knobs">{{ totals['knob'] }}</span></li>
+        <li>iPadBase: <span id="total-ipadbase">{{ totals['ipad_base'] }}</span></li>
+        <li>Snapfits: <span id="total-snapfits">{{ totals['snapfit'] }}</span></li>
+        <li>Faceplates: <span id="total-faceplates">{{ totals['faceplate'] }}</span></li>
     </ul>
+    
 
     <!-- Submit to Master Summary Button -->
     <form method="POST" action="{{ url_for('production.submit_master') }}">
@@ -301,7 +339,7 @@
                         <li>No changes</li>
                         {% endfor %}
                     </ul>
-                </td>
+                </td>                
             </tr>
             {% endfor %}
         </tbody>
