@@ -6,6 +6,49 @@
     <title>Production Schedule with Assigned People</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
     <script>
+
+
+        
+       // Function to select/deselect all enabled checkboxes
+       function toggleSelectAll(checked) {
+            const checkboxes = document.querySelectorAll('input[type="checkbox"]');
+            checkboxes.forEach(checkbox => {
+                if (!checkbox.disabled) {
+                    checkbox.checked = checked;
+                }
+            });
+            autoSubmit()
+        }
+       function adjustPartCount(partId, increment) {
+        const partElement = document.getElementById(partId);
+        let currentValue = parseInt(partElement.innerText);
+
+        if (!isNaN(currentValue)) {
+            const newValue = currentValue + increment;
+            partElement.innerText = Math.max(newValue, 0);  // Prevent going below 0
+
+            // Prepare form data to send updated value to the server
+            const formData = new FormData();
+            formData.append(partId, newValue);
+
+            // Send the updated value to the server asynchronously
+            fetch("/adjust_part_count", {
+                method: "POST",
+                body: formData,
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (!data.success) {
+                    alert("Failed to update part count.");
+                }
+            })
+            .catch(error => {
+                console.error("Error adjusting part count:", error);
+            });
+        }
+    }
+
+
         function enableCheckbox(checkboxId, person) {
         const checkbox = document.getElementById(checkboxId);
             if (person) {
@@ -34,9 +77,18 @@
 
         // Update the number of printers in the DOM on page load
         window.onload = function() {
-            document.getElementById("printer-count").innerText = numberOfPrinters;
-            updateTotals(getCurrentTotals());
-        }
+        // Retrieve and display the number of printers
+        numberOfPrinters = parseInt(getNumberOfPrinters());
+        document.getElementById("printer-count").innerText = numberOfPrinters;
+
+        // Update the hidden field with the correct number of printers
+        document.getElementById("hidden-num-printers").value = numberOfPrinters;
+
+        // Update totals and submit form on load
+        updateTotals(getCurrentTotals());
+        autoSubmit();
+    }
+
 
         // Function to submit form asynchronously and update assignments
         function autoSubmit() {
@@ -80,7 +132,7 @@
         document.getElementById("total-snapfits").innerText = (totals['snapfit'] || 0) * numberOfPrinters;
         document.getElementById("total-faceplates").innerText = (totals['faceplate'] || 0) * numberOfPrinters;
     }
-
+ 
 
         function updateBedChanges(bedChanges) {
         console.log("Updating bed changes:", bedChanges);
@@ -128,14 +180,22 @@
         }
 
         // Adjust the number of printers and save it to local storage
-        function adjustPrinters(increment) {
-            numberOfPrinters = Math.max(numberOfPrinters + increment, 1);  // Ensure at least 1 printer
-            document.getElementById("printer-count").innerText = numberOfPrinters;
-            saveNumberOfPrinters(numberOfPrinters);  // Save to local storage
+      // Adjust the number of printers and update hidden input field
+      function adjustPrinters(increment) {
+        numberOfPrinters = Math.max(numberOfPrinters + increment, 1);  // Ensure at least 1 printer
+        document.getElementById("printer-count").innerText = numberOfPrinters;
 
-            // Recalculate totals with the updated number of printers
-            updateTotals(getCurrentTotals());
-        }
+        // Save the number of printers to local storage
+        saveNumberOfPrinters(numberOfPrinters);
+
+        // Update the hidden field for form submission
+        document.getElementById("hidden-num-printers").value = numberOfPrinters;
+
+        // Recalculate totals with the updated number of printers
+        updateTotals(getCurrentTotals());
+    }
+
+
 
         // Get the current totals displayed on the page
         function getCurrentTotals() {
@@ -160,7 +220,12 @@
             <button onclick="adjustPrinters(1)">+</button>
         </h2>
     </div>
-
+    <!-- Add the "Select All" checkbox here -->
+    <div>
+        <label for="select-all">
+            <input type="checkbox" id="select-all" onclick="toggleSelectAll(this.checked)"> Select All
+        </label>
+    </div>
     <form method="POST" action="/production/update" id="scheduleForm">
         <table border="1">
             <thead>
@@ -278,20 +343,59 @@
 
     <h2>Total Parts Produced (Current Cycle):</h2>
     <ul>
-        <li>Rails: <span id="total-rails">{{ totals['rail'] }}</span></li>
-        <li>iPhones: <span id="total-iphones">{{ totals['iphone_base'] }}</span></li>
-        <li>Logos: <span id="total-logos">{{ totals['logo'] }}</span></li>
-        <li>Knobs: <span id="total-knobs">{{ totals['knob'] }}</span></li>
-        <li>iPadBase: <span id="total-ipadbase">{{ totals['ipad_base'] }}</span></li>
-        <li>Snapfits: <span id="total-snapfits">{{ totals['snapfit'] }}</span></li>
-        <li>Faceplates: <span id="total-faceplates">{{ totals['faceplate'] }}</span></li>
+        <li>
+            Rails: 
+            <button onclick="adjustPartCount('total-rails', -1)">-</button>
+            <span id="total-rails">{{ totals['rail'] }}</span>
+            <button onclick="adjustPartCount('total-rails', 1)">+</button>
+        </li>
+        <li>
+            iPhones: 
+            <button onclick="adjustPartCount('total-iphones', -1)">-</button>
+            <span id="total-iphones">{{ totals['iphone_base'] }}</span>
+            <button onclick="adjustPartCount('total-iphones', 1)">+</button>
+        </li>
+        <li>
+            Logos: 
+            <button onclick="adjustPartCount('total-logos', -1)">-</button>
+            <span id="total-logos">{{ totals['logo'] }}</span>
+            <button onclick="adjustPartCount('total-logos', 1)">+</button>
+        </li>
+        <li>
+            Knobs: 
+            <button onclick="adjustPartCount('total-knobs', -1)">-</button>
+            <span id="total-knobs">{{ totals['knob'] }}</span>
+            <button onclick="adjustPartCount('total-knobs', 1)">+</button>
+        </li>
+        <li>
+            iPadBase: 
+            <button onclick="adjustPartCount('total-ipadbase', -1)">-</button>
+            <span id="total-ipadbase">{{ totals['ipad_base'] }}</span>
+            <button onclick="adjustPartCount('total-ipadbase', 1)">+</button>
+        </li>
+        <li>
+            Snapfits: 
+            <button onclick="adjustPartCount('total-snapfits', -1)">-</button>
+            <span id="total-snapfits">{{ totals['snapfit'] }}</span>
+            <button onclick="adjustPartCount('total-snapfits', 1)">+</button>
+        </li>
+        <li>
+            Faceplates: 
+            <button onclick="adjustPartCount('total-faceplates', -1)">-</button>
+            <span id="total-faceplates">{{ totals['faceplate'] }}</span>
+            <button onclick="adjustPartCount('total-faceplates', 1)">+</button>
+        </li>
     </ul>
+    
     
 
     <!-- Submit to Master Summary Button -->
+    <!-- Submit to Master Summary Button -->
     <form method="POST" action="{{ url_for('production.submit_master') }}">
+        <input type="hidden" name="num_printers" id="hidden-num-printers" value="1"> <!-- Hidden input to pass number of printers -->
         <button class="submit-btn" type="submit">Submit to Master Summary</button>
     </form>
+
 
     <!-- Undo Button -->
     <form method="POST" action="{{ url_for('production.undo_last_submission') }}">
@@ -316,7 +420,8 @@
                 <th>Total Knobs</th>
                 <th>Total iPadBase</th>
                 <th>Total Snapfits</th>
-                <th>Bed Changes (Person - Changes)</th>  <!-- New column for bed changes -->
+                <th>Total Faceplates</th>
+                <th>Bed Changes (Person - Changes)</th>
             </tr>
         </thead>
         <tbody>
@@ -325,12 +430,13 @@
                 <td>Cycle {{ cycle.cycle }}</td>
                 <td>{{ cycle.start_date }}</td>
                 <td>{{ cycle.end_date }}</td>
-                <td>{{ cycle.total_rails }}</td>
-                <td>{{ cycle.total_iphones }}</td>
-                <td>{{ cycle.total_logos }}</td>
-                <td>{{ cycle.total_knobs }}</td>
-                <td>{{ cycle.total_ipadbase }}</td>
-                <td>{{ cycle.total_snapfits }}</td>
+                <td>{{ cycle.total_rail }}</td>
+                <td>{{ cycle.total_iphone_base }}</td>
+                <td>{{ cycle.total_logo }}</td>
+                <td>{{ cycle.total_knob }}</td>
+                <td>{{ cycle.total_ipad_base }}</td>
+                <td>{{ cycle.total_snapfit }}</td>
+                <td>{{ cycle.total_faceplate }}</td>
                 <td>
                     <ul>
                         {% for bed_change in cycle.bed_changes %}
@@ -344,6 +450,7 @@
             {% endfor %}
         </tbody>
     </table>
+    
     
     
 </body>

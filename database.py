@@ -505,12 +505,12 @@ def update_all_days(data, num_printers):
                             person_id = result['id']
                             print(f"Incrementing bed changes for person_id: {person_id}")  # Debugging
 
-                            # Increment bed changes count for this person
+                        # Increment bed changes count for this person, multiplied by num_printers
                             c.execute("""
                                 UPDATE bed_changes
-                                SET changes = changes + 1
+                                SET changes = changes + ?
                                 WHERE person_id = ?
-                            """, (person_id,))
+                            """, (num_printers, person_id))
                         else:
                             print(f"Person '{print_person}' not found in people table.")
 
