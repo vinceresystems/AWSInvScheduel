@@ -1,8 +1,8 @@
 import requests
 import json
 import sqlite3
-
-LINEAR_API_TOKEN = "lin_api_8YHttL95Z268z38jvluYRaRHl6aW7DXIealAwlpz"
+API_KEY = os.getenv("LINEAR_API_KEY")
+LINEAR_API_TOKEN = API_KEY
 TEAM_ID = "907e99f2-9d02-4126-ad7b-794611e94a27"  # Use the correct Linear team ID
 COMPLETED_STATE_ID = "9941892d-25da-4884-a1a5-5780c6b04911"  # Replace with your "Done" state ID
 # Function to create a Linear task and assign it to a specific person
